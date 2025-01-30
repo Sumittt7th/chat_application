@@ -16,7 +16,10 @@ export const userResolvers = {
         }
         return await userService.getAllUser();
       },
-      getUserById: async (_:unknown, { id }: { id: string }): Promise<IUser | null> => {
+      getUserById: async (_:unknown, { id }: { id: string }, { user }: Context): Promise<IUser | null> => {
+        if (!user) {
+            throw new Error('Unauthorized');
+          }
          return await userService.getUserById(id);     
       },
     me: async (_:unknown, __:unknown, { user }: Context): Promise<IUser | null> => {
