@@ -12,10 +12,12 @@ import bcrypt from 'bcrypt';
  * @param {IUser} data - User data to create a new user.
  * @returns {Promise<Object>} The created user document.
  */
-export const createUser = async (data: IUser) => {
+// In user.service.ts
+export const createUser = async (data: Omit<IUser, '_id' | 'createdAt' | 'updatedAt'>) => {
     const result = await UserSchema.create({ ...data, active: true, refToken: "" });
     return result;
-};
+  };
+  
 
 /**
  * Updates an existing user by ID with the provided data.
@@ -25,7 +27,7 @@ export const createUser = async (data: IUser) => {
  * @param {IUser} data - Updated user data.
  * @returns {Promise<Object|null>} The updated user document or null if not found.
  */
-export const updateUser = async (id: string, data: IUser) => {
+export const updateUser = async (id: string,data: Omit<IUser, '_id' | 'createdAt' | 'updatedAt' | 'password'>) => {
     const result = await UserSchema.findOneAndUpdate({ _id: id }, data, {
         new: true,
     });

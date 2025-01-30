@@ -9,6 +9,7 @@ export const isAuthenticated = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "");
+      console.log(token)
 
       if (!token) {
         throw createHttpError(401, {
