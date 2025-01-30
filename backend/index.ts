@@ -2,10 +2,7 @@ import express, { type Application, type Request, type Response } from "express"
 import bodyParser from "body-parser";
 import morgan from "morgan";
 import http from "http";
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
-import { makeExecutableSchema } from '@graphql-tools/schema';
-
+import { createApolloServer, graphqlMiddleware, apolloExpressMiddleware } from './app/common/services/graphql.service';
 import { initDB } from "./app/common/services/database.service";
 import { initPassport } from "./app/common/services/passport-jwt.service";
 import { loadConfig } from "./app/common/helper/config.hepler";
@@ -13,9 +10,6 @@ import { type IUser } from "./app/user/user.dto";
 import errorHandler from "./app/common/middleware/error-handler.middleware";
 import limiter from './app/common/middleware/rate-limiter.middleware';
 import cors from "cors";
-import { typeDefs as userTypeDefs} from './app/user/user.graphql'; 
-import { userResolvers } from './app/user/user.resolver';
-import { isAuthenticated } from './app/common/middleware/isAuthenticate.middleware';
 
 loadConfig();
 
@@ -29,8 +23,7 @@ declare global {
 }
 
 const port = Number(process.env.PORT) ?? 5000;
-
-const app: Application = express();  // Ensure correct type
+const app: Application = express();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -41,39 +34,15 @@ app.use(cors());
 const initApp = async (): Promise<void> => {
   await initDB();
   initPassport();
-  //app.use(limiter);
 
-  const typeDefs = [userTypeDefs];  
-  const resolvers = [userResolvers]; 
+  // Create Apollo Server instance and PubSub instance
+  const { server, pubsub } = await createApolloServer();
 
-  const schema = makeExecutableSchema({ typeDefs, resolvers });
+  // Apply authentication middleware
+  app.use("/graphql", graphqlMiddleware(server));
 
-  const server = new ApolloServer({ schema });
-
-  await server.start(); 
-
-  app.use("/graphql", (req, res, next) => {
-    const publicRoutes = ["createUser", "login"];
-    const operationName = req.body.operationName;
-    if (!req.body.query || !operationName || operationName === 'IntrospectionQuery') {
-      return next();
-    }
-    if (publicRoutes.includes(operationName)) {
-      return next(); 
-    }
-    return isAuthenticated(req, res, next);
-  });
-
-  app.use(
-    "/graphql",
-    express.json(),
-    expressMiddleware(server, {
-      context: async ({ req }: { req: Request }) => {
-        return { user: req.user ?? null };
-      },
-    })
-  );
-
+  // Apply Apollo Server middleware
+  app.use("/graphql", apolloExpressMiddleware(server));
 
   app.get("/", (req: Request, res: Response) => {
     res.send({ status: "ok" });
@@ -81,9 +50,13 @@ const initApp = async (): Promise<void> => {
 
   app.use(errorHandler);
 
-  http.createServer(app).listen(port, () => {
+  // Start HTTP server for both GraphQL and subscription via HTTP
+  const httpServer = http.createServer(app);
+  httpServer.listen(port, () => {
     console.log("Server is running on port", port);
   });
+
+  // You may also add additional subscription logic here if needed.
 };
 
 void initApp();

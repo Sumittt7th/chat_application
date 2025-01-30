@@ -37,5 +37,10 @@ export const typeDefs = gql`
     changePassword(id: ID!, currentPassword: String!, newPassword: String!): User!
     resetPassword(id: ID!, password: String!): User!
   }
+
+  
+type Subscription {
+  newMessage: String!
+}
 `;
 

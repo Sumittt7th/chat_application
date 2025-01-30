@@ -2,6 +2,9 @@ import * as userService from './user.service';
 import { createUserTokens } from '../common/services/passport-jwt.service';
 import bcrypt from 'bcrypt';
 import { type IUser } from "./user.dto";
+import { PubSub } from 'graphql-subscriptions';
+
+const pubsub = new PubSub();
 
 
 interface Context {
@@ -84,6 +87,11 @@ export const userResolvers = {
       { id, password }: { id: string, password: string }
     ): Promise<IUser> => {
       return await userService.resetPassword(id, password);
+    },
+    Subscription: {
+      newMessage: {
+        subscribe: () => pubsub.asyncIterator('NEW_MESSAGE'), // You’ll use the same event name when publishing
+      },
     },
   },
 };
